@@ -1,0 +1,38 @@
+"""
+Game configuration and constants
+"""
+# Window settings
+WIDTH, HEIGHT = 1280, 720
+FPS = 60
+
+# Player settings
+PLAYER_SIZE = 32
+PLAYER_SPEED = 300
+PLAYER_MAX_HEALTH = 100
+PLAYER_PICKUP_RADIUS = 80
+
+# Zombie settings
+ZOMBIE_SIZE = 28
+ZOMBIE_SPEED = 80
+ZOMBIE_SPAWN_RATE = 1.0  # seconds between spawns
+ZOMBIE_BASE_HEALTH = 50
+
+# Weapon settings
+BULLET_SPEED = 500
+BULLET_DAMAGE = 25
+DISC_RADIUS = 100
+DISC_ROTATION_SPEED = 180  # degrees per second
+DISC_DAMAGE = 15
+
+# Experience settings
+EXP_BASE_VALUE = 10
+EXP_TO_LEVEL = 100
+EXP_LEVEL_MULTIPLIER = 1.2
+
+# Colors
+COLOR_BG = (20, 0, 40)
+COLOR_PLAYER = (240, 240, 240)
+COLOR_ZOMBIE = (50, 150, 50)
+COLOR_BULLET = (255, 200, 100)
+COLOR_EXP = (100, 255, 255)
+COLOR_VOID = (80, 20, 120)
