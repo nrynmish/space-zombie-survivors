@@ -91,10 +91,6 @@ class Player:
     def draw(self, surface):
         """Draw the player."""
         # Flash when invulnerable
-
-        if self.invulnerable_time > 0:
-            print(f"Invuln time: {self.invulnerable_time:.2f}")
-
         if self.invulnerable_time > 0 and int(self.invulnerable_time * 10) % 2:
             return  # Skip drawing to create flash effect
         
