@@ -3,7 +3,9 @@ Player entity - the character controlled by the user
 """
 import pygame
 import math
+import os
 from config import *
+from animated_sprite import AnimatedSprite
 
 
 class Player:
@@ -23,6 +25,17 @@ class Player:
         # State
         self.alive = True
         self.invulnerable_time = 0  # for damage immunity after hit
+        
+        # Animation
+        sprite_path = os.path.join('assets', 'sprites', 'player_idle.png')
+        self.animation = AnimatedSprite(
+            sprite_sheet_path=sprite_path,
+            frame_width=64,
+            frame_height=64,
+            num_frames=3,
+            fps=6,
+            layout='vertical'
+        )
         
     def handle_input(self, keys, dt):
         """Handle WASD/Arrow key movement."""
@@ -71,20 +84,33 @@ class Player:
         """Update player state."""
         if self.invulnerable_time > 0:
             self.invulnerable_time -= dt
+        
+        # Update animation
+        self.animation.update(dt)
     
     def draw(self, surface):
         """Draw the player."""
         # Flash when invulnerable
+
+        if self.invulnerable_time > 0:
+            print(f"Invuln time: {self.invulnerable_time:.2f}")
+
         if self.invulnerable_time > 0 and int(self.invulnerable_time * 10) % 2:
             return  # Skip drawing to create flash effect
-            
-        pygame.draw.rect(surface, self.color, self.rect)
+        
+        # Draw animated sprite
+        current_frame = self.animation.get_current_frame()
+        
+        # Center the 64x64 sprite on the 32x32 collision rect
+        sprite_rect = current_frame.get_rect()
+        sprite_rect.center = self.rect.center
+        surface.blit(current_frame, sprite_rect)
         
         # Draw health bar above player
-        bar_width = PLAYER_SIZE
+        bar_width = 64  # Match sprite width
         bar_height = 4
-        bar_x = self.rect.x
-        bar_y = self.rect.y - 10
+        bar_x = sprite_rect.x
+        bar_y = sprite_rect.y - 10
         
         # Background (red)
         pygame.draw.rect(surface, (100, 0, 0), 
