@@ -1,7 +1,3 @@
-"""
-Space Zombie Survivors - Main Game Loop
-A survivor-like game where you fight hordes of space zombies!
-"""
 import pygame
 import sys
 import random
@@ -22,6 +18,9 @@ from systems.particles import VoidParticle, create_death_particles, create_void_
 
 # Import UI
 from ui.hud import HUD
+
+from weapons.auto_gun import AutoGun
+from weapons.orbiting_disc import OrbitingDisc
 
 
 class Game:
@@ -55,8 +54,10 @@ class Game:
         self.kills = 0
         
         # Weapon system (basic auto-gun for now)
-        self.shoot_timer = 0
-        self.shoot_cooldown = 0.3  # 3 shots per second
+        self.weapons = [
+            AutoGun(self.player),
+            OrbitingDisc(self.player)
+        ] 
         
     def handle_events(self):
         """Handle pygame events."""
@@ -90,11 +91,10 @@ class Game:
         self.player.clamp(WIDTH, HEIGHT)
         self.player.update(dt)
         
-        # Auto-shoot at nearest zombie
-        self.shoot_timer += dt
-        if self.shoot_timer >= self.shoot_cooldown and len(self.zombies) > 0:
-            self.shoot_at_nearest_zombie()
-            self.shoot_timer = 0
+    # New Weapons update
+        for weapon in self.weapons:
+            new_bullets = weapon.update(dt, self.zombies)
+            self.bullets.extend(new_bullets)
         
         # Spawn void particles around player
         if random.random() < 0.3:
@@ -156,35 +156,7 @@ class Game:
         # Update particles
         self.particles = [p for p in self.particles if p.update(dt)]
     
-    def shoot_at_nearest_zombie(self):
-        """Shoot a bullet at the nearest zombie."""
-        if not self.zombies:
-            return
-        
-        # Find nearest zombie
-        nearest = None
-        min_dist = float('inf')
-        
-        for zombie in self.zombies:
-            if not zombie.alive:
-                continue
-            dx = zombie.rect.centerx - self.player.rect.centerx
-            dy = zombie.rect.centery - self.player.rect.centery
-            dist = dx * dx + dy * dy  # squared distance is fine for comparison
-            
-            if dist < min_dist:
-                min_dist = dist
-                nearest = zombie
-        
-        if nearest:
-            bullet = Bullet(
-                self.player.rect.centerx,
-                self.player.rect.centery,
-                nearest.rect.centerx,
-                nearest.rect.centery
-            )
-            self.bullets.append(bullet)
-    
+
     def on_level_up(self):
         """Handle level up event."""
         # TODO: Show upgrade menu
@@ -216,6 +188,10 @@ class Game:
         
         # Draw player
         self.player.draw(self.screen)
+
+        #draw weapons
+        for weapon in self.weapons:
+            weapon.draw(self.screen)
         
         # Draw HUD
         self.hud.draw(self.screen, self.player, self.exp_system, 
