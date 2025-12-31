@@ -10,6 +10,7 @@ from entities.player import Player
 from entities.zombie import Zombie
 from entities.exp_gem import ExpGem
 from entities.bullet import Bullet
+from entities.boss_zombie import BossZombie
 
 # Import systems
 from systems.spawner import ZombieSpawner
@@ -56,6 +57,11 @@ class Game:
         self.bullets = []
         self.exp_gems = []
         self.particles = []
+        
+        #Boss 
+        self.boss = None
+        self.boss_spawned = False
+        self.boss_spawn_time = 150  # Spawn boss after 150 seconds
         
         # Game stats
         self.game_time = 0
@@ -136,6 +142,10 @@ class Game:
         # Spawn zombies
         if self.spawner.should_spawn(dt):
             self.zombies.append(self.spawner.spawn_zombie())
+
+        # Spawn boss at specific time
+        if not self.boss_spawned and self.game_time >= self.boss_spawn_time:
+            self.spawn_boss()
         
         # Update zombies
         for zombie in self.zombies[:]:
@@ -148,6 +158,30 @@ class Game:
                 else:
                     self.screen_shake = 10  # Trigger screen shake
         
+        # Update boss
+        if self.boss and self.boss.alive:
+            self.boss.update(dt, self.player.rect.center)
+            
+            # Boss collision with player
+            if self.boss.rect.colliderect(self.player.rect):
+                if self.player.take_damage(self.boss.damage):
+                    self.game_over = True
+                else:
+                    self.screen_shake = 15  # Bigger shake for boss!
+            
+            # Boss spawns minions
+            if self.boss.should_spawn_minion():
+                # Spawn 3 zombies around boss
+                for i in range(5):
+                    offset_x = random.randint(-100, 100)
+                    offset_y = random.randint(-100, 100)
+                    minion = Zombie(
+                        self.boss.rect.centerx + offset_x,
+                        self.boss.rect.centery + offset_y,
+                        "fast"
+                    )
+                    self.zombies.append(minion)
+
         # Update bullets
         for bullet in self.bullets[:]:
             if not bullet.update(dt, WIDTH, HEIGHT):
@@ -170,11 +204,34 @@ class Game:
                         self.particles.extend(create_death_particles(
                             zombie.rect.centerx,
                             zombie.rect.centery,
-                            zombie.color
+                            zombie.color,
+                            count = 25
                         ))
                         self.zombies.remove(zombie)
                     break
-        
+                    
+            # Check bullet-boss collision
+            if self.boss and self.boss.alive and bullet.alive:
+                if bullet.check_collision(self.boss):
+                    if not self.boss.alive:
+                        # BOSS DEFEATED!
+                        self.kills += 1
+                        # Huge XP drop
+                        self.exp_gems.append(ExpGem(
+                            self.boss.rect.centerx,
+                            self.boss.rect.centery,
+                            self.boss.exp_value
+                        ))
+                        # Massive particle explosion!
+                        self.particles.extend(create_death_particles(
+                            self.boss.rect.centerx,
+                            self.boss.rect.centery,
+                            self.boss.color,
+                            count=50  # HUGE explosion!
+                        ))
+                        self.screen_shake = 30  # BIG shake!
+                        self.boss = None
+
         # Update exp gems
         for gem in self.exp_gems[:]:
             if gem.update(dt, self.player.rect.center, self.player.pickup_radius):
@@ -196,6 +253,19 @@ class Game:
         self.upgrade_menu.show(self.player, self.weapons, available)
         print(f"Level up! Now level {self.exp_system.level}")
     
+    def spawn_boss(self):
+        """Spawn the boss zombie!"""
+        self.boss_spawned = True
+        
+        # Spawn boss at top center of screen
+        boss_x = WIDTH // 2
+        boss_y = -100
+        
+        self.boss = BossZombie(boss_x, boss_y)
+        
+        # Show warning message
+        print("⚠️  BOSS INCOMING! ⚠️")
+
     def draw(self):
         """Draw all game entities."""
         # Clear screen with void color
@@ -222,6 +292,10 @@ class Game:
         # Draw zombies
         for zombie in self.zombies:
             zombie.draw(temp_surface)
+
+        # Draw boss
+        if self.boss and self.boss.alive:
+            self.boss.draw(temp_surface)
         
         # Draw bullets
         for bullet in self.bullets:
