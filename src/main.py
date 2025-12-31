@@ -19,6 +19,7 @@ from systems.particles import VoidParticle, create_death_particles, create_void_
 # Import UI
 from ui.hud import HUD
 from ui.upgrade_menu import UpgradeMenu
+from ui.main_menu import MainMenu
 
 #Import weapons
 from weapons.auto_gun import AutoGun
@@ -48,6 +49,7 @@ class Game:
         self.exp_system = ExperienceSystem()
         self.hud = HUD(WIDTH, HEIGHT)
         self.upgrade_menu = UpgradeMenu(WIDTH, HEIGHT)
+        self.main_menu = MainMenu(WIDTH, HEIGHT)    
         
         # Entity lists
         self.zombies = []
@@ -58,6 +60,11 @@ class Game:
         # Game stats
         self.game_time = 0
         self.kills = 0
+
+        #Screen Shake
+        self.screen_shake = 0
+        self.shake_offset_x = 0
+        self.shake_offset_y = 0
         
         # Weapon system (basic auto-gun for now)
         self.weapons = [
@@ -79,8 +86,11 @@ class Game:
                 elif event.key == pygame.K_r and self.game_over:
                     self.restart()
             elif event.type == pygame.MOUSEBUTTONDOWN:
+                # Handle main menu clicks
+                if self.main_menu.active:
+                    self.main_menu.handle_click(event.pos)
                 # Handle upgrade menu clicks
-                if self.upgrade_menu.active:
+                elif self.upgrade_menu.active:
                     self.upgrade_menu.handle_click(event.pos)
     
     def restart(self):
@@ -89,7 +99,7 @@ class Game:
     
     def update(self, dt):
         """Update all game entities and systems."""
-        if self.paused or self.game_over or self.upgrade_menu.active:
+        if self.paused or self.game_over or self.upgrade_menu.active or self.main_menu.active:
             return
         
         # Update game time
@@ -100,8 +110,17 @@ class Game:
         self.player.handle_input(keys, dt)
         self.player.clamp(WIDTH, HEIGHT)
         self.player.update(dt)
+
+         # Update screen shake
+        if self.screen_shake > 0:
+            self.screen_shake -= dt * 10
+            self.shake_offset_x = random.randint(-int(self.screen_shake), int(self.screen_shake))
+            self.shake_offset_y = random.randint(-int(self.screen_shake), int(self.screen_shake))
+        else:
+            self.shake_offset_x = 0
+            self.shake_offset_y = 0
         
-    # New Weapons update
+        # New Weapons update
         for weapon in self.weapons:
             new_bullets = weapon.update(dt, self.zombies)
             self.bullets.extend(new_bullets)
@@ -126,6 +145,8 @@ class Game:
             if zombie.alive and self.player.rect.colliderect(zombie.rect):
                 if self.player.take_damage(zombie.damage):
                     self.game_over = True
+                else:
+                    self.screen_shake = 10  # Trigger screen shake
         
         # Update bullets
         for bullet in self.bullets[:]:
@@ -180,43 +201,56 @@ class Game:
         # Clear screen with void color
         self.screen.fill(COLOR_BG)
         
+        # If main menu is active, only draw menu
+        if self.main_menu.active:
+            self.main_menu.draw(self.screen)
+            pygame.display.flip()
+            return
+        
+        # Create a temporary surface for screen shake
+        temp_surface = pygame.Surface((WIDTH, HEIGHT))
+        temp_surface.fill(COLOR_BG)
+        
         # Draw particles (behind everything)
         for particle in self.particles:
-            particle.draw(self.screen)
+            particle.draw(temp_surface)
         
         # Draw exp gems
         for gem in self.exp_gems:
-            gem.draw(self.screen)
+            gem.draw(temp_surface)
         
         # Draw zombies
         for zombie in self.zombies:
-            zombie.draw(self.screen)
+            zombie.draw(temp_surface)
         
         # Draw bullets
         for bullet in self.bullets:
-            bullet.draw(self.screen)
+            bullet.draw(temp_surface)
         
         # Draw player
-        self.player.draw(self.screen)
-
-        #draw weapons
+        self.player.draw(temp_surface)
+        
+        # Draw weapons (like orbiting disc)
         for weapon in self.weapons:
-            weapon.draw(self.screen)
+            weapon.draw(temp_surface)
         
-        # Draw HUD
-        self.hud.draw(self.screen, self.player, self.exp_system, 
+        # Draw HUD (no shake on UI)
+        self.hud.draw(temp_surface, self.player, self.exp_system, 
                      self.game_time, self.kills)
-        self.hud.draw_fps(self.screen, self.clock.get_fps())
+        self.hud.draw_fps(temp_surface, self.clock.get_fps())
         
-        # Draw pause overlay
+        # Apply screen shake
+        self.screen.blit(temp_surface, (self.shake_offset_x, self.shake_offset_y))
+        
+        # Draw pause overlay (no shake)
         if self.paused:
             self.draw_pause_screen()
         
-        # Draw game over screen
+        # Draw game over screen (no shake)
         if self.game_over:
             self.draw_game_over_screen()
-
-        # Draw upgrade menu
+        
+        # Draw upgrade menu (on top of everything, no shake)
         self.upgrade_menu.draw(self.screen)
         
         pygame.display.flip()
