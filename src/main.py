@@ -18,9 +18,14 @@ from systems.particles import VoidParticle, create_death_particles, create_void_
 
 # Import UI
 from ui.hud import HUD
+from ui.upgrade_menu import UpgradeMenu
 
+#Import weapons
 from weapons.auto_gun import AutoGun
 from weapons.orbiting_disc import OrbitingDisc
+
+#Import upgrades
+from systems.upgrades import get_available_upgrades
 
 
 class Game:
@@ -42,6 +47,7 @@ class Game:
         self.spawner = ZombieSpawner(WIDTH, HEIGHT)
         self.exp_system = ExperienceSystem()
         self.hud = HUD(WIDTH, HEIGHT)
+        self.upgrade_menu = UpgradeMenu(WIDTH, HEIGHT)
         
         # Entity lists
         self.zombies = []
@@ -72,6 +78,10 @@ class Game:
                         self.paused = not self.paused
                 elif event.key == pygame.K_r and self.game_over:
                     self.restart()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                # Handle upgrade menu clicks
+                if self.upgrade_menu.active:
+                    self.upgrade_menu.handle_click(event.pos)
     
     def restart(self):
         """Restart the game."""
@@ -79,7 +89,7 @@ class Game:
     
     def update(self, dt):
         """Update all game entities and systems."""
-        if self.paused or self.game_over:
+        if self.paused or self.game_over or self.upgrade_menu.active:
             return
         
         # Update game time
@@ -161,8 +171,8 @@ class Game:
         """Handle level up event."""
         # TODO: Show upgrade menu
         # For now, just give a stat boost
-        self.player.max_health += 10
-        self.player.health = min(self.player.health + 30, self.player.max_health)
+        available = get_available_upgrades(self.player, self.weapons)
+        self.upgrade_menu.show(self.player, self.weapons, available)
         print(f"Level up! Now level {self.exp_system.level}")
     
     def draw(self):
@@ -205,6 +215,9 @@ class Game:
         # Draw game over screen
         if self.game_over:
             self.draw_game_over_screen()
+
+        # Draw upgrade menu
+        self.upgrade_menu.draw(self.screen)
         
         pygame.display.flip()
     
